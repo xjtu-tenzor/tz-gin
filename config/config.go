@@ -1,6 +1,8 @@
 package config
 
 import (
+	_ "embed"
+
 	"github.com/spf13/viper"
 	"github.com/urfave/cli"
 )
@@ -27,15 +29,9 @@ func New() *Config {
 	}
 }
 
-func (cfg *Config) Load(key string, app *cli.App) {
-	viper.SetConfigName("config")
-	viper.SetConfigType("toml")
-	viper.AddConfigPath(".")
-	if err := viper.ReadInConfig(); err != nil {
-		panic("failed to read config file, error: " + err.Error())
-	}
+func (cfg *Config) Load(key string, app *cli.App, config string) {
 	tmp := &Config{}
-	if err := viper.UnmarshalKey(key, tmp); err != nil {
+	if err := viper.UnmarshalKey(config, tmp); err != nil {
 		panic("failed to init api config, error: " + err.Error())
 	}
 	if tmp.APP != nil {

@@ -24,6 +24,9 @@ var projectName string
 //go:embed template.tar.gz
 var template []byte
 
+//go:embed config.toml
+var configStirng string
+
 func parseParams(c *cli.Context) {
 	directoryString = flag.String("d", "./", "Input the directory you want to create to.")
 
@@ -198,7 +201,7 @@ func main() {
 	cfg := config.New()
 
 	app := cli.NewApp()
-	cfg.Load("tz.gin", app)
+	cfg.Load("tz.gin", app, configStirng)
 	app.Commands = []cli.Command{
 		{
 			Name:    "create",
