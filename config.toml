@@ -1,0 +1,5 @@
+[tz.gin.app]
+name = "tz-gin-cli"
+usage = "quickly build tenzor normalizing go-gin code"
+author = "tenzor/tiaozhan"
+version = "0.2.0"

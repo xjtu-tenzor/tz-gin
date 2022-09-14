@@ -8,9 +8,14 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
+	"os/exec"
 	"path"
 	"strings"
+
+	"github.com/urfave/cli"
+	"github.com/xjtu-tenzor/tz-gin/config"
 )
 
 var directoryString *string
@@ -19,28 +24,10 @@ var projectName string
 //go:embed template.tar.gz
 var template []byte
 
-func init() {
-	flag.Usage = func() {
-		fmt.Print("Use")
-		fmt.Printf(" \033[0;32;40m%s\033[0m", "create-gin <project-dir>")
-		fmt.Print(" to create tz-gin project in the directory")
-		fmt.Printf(" \033[0;32;40m%s\033[0m\n", "<project-dir>")
-	}
-
+func parseParams(c *cli.Context) {
 	directoryString = flag.String("d", "./", "Input the directory you want to create to.")
 
-	flag.Parse()
-}
-
-func parseParams() {
-	if flag.NArg() > 1 {
-		errMsg("Only one project name can be provided!")
-		os.Exit(1)
-	}
-
-	if flag.NArg() != 0 {
-		projectName = flag.Args()[0]
-	}
+	projectName = c.Args().First()
 
 	if len(projectName) == 0 {
 		fmt.Print("Input your project name : ")
@@ -99,7 +86,7 @@ func prepareDirectory() {
 	if len(names) != 0 {
 		var per string
 		for {
-			warnMsg("The folder is not emtpy, are you sure you want to create project in this directory? [y/N]")
+			warnMsg("The folder is not empty, are you sure you want to create project in this directory? [y/N]")
 			if _, err := fmt.Scanf("%s\n", &per); err != nil {
 				if err.Error() == "unexpected newline" {
 					warnMsg("Interrupt by none-empty folder")
@@ -123,10 +110,10 @@ func prepareDirectory() {
 	}
 }
 
-func main() {
+func create(c *cli.Context) error {
 	successMsg("Welcome to use this cli. Developed by tenzor.")
 
-	parseParams()
+	parseParams(c)
 
 	prepareDirectory()
 
@@ -177,5 +164,68 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	return nil
+}
 
+func update(c *cli.Context) error {
+	path, err := checkExists()
+	if len(path) != 0 && err != nil {
+		cmd := exec.Command(path, "install ", "github.com/xjtu-tenzor/tz-gin", "@latest")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Fatalln("fail ", err)
+			return err
+		}
+		fmt.Printf("update out :\n%s\n", string(out))
+		return nil
+	}
+	return err
+}
+
+func checkExists() (string, error) {
+	path, err := exec.LookPath("go")
+	if err != nil {
+		fmt.Printf("cannot find command\"go\"")
+		return "", err
+	} else {
+		// fmt.Printf("\"go\" executable is in '%s'\n", path)
+		return path, nil
+	}
+}
+
+func main() {
+
+	cfg := config.New()
+
+	app := cli.NewApp()
+	cfg.Load("tz.gin", app)
+	app.Commands = []cli.Command{
+		{
+			Name:    "create",
+			Aliases: []string{"c"},
+			Usage:   "create operations ",
+			Action: func(c *cli.Context) error {
+				err := create(c)
+				if err != nil {
+					fmt.Println(err)
+					return err
+				}
+				return nil
+			},
+		},
+		{
+			Name:    "update",
+			Aliases: []string{"u"},
+			Usage:   "update operations ",
+			Action: func(c *cli.Context) error {
+				err := update(c)
+				if err != nil {
+					fmt.Println(err)
+					return err
+				}
+				return nil
+			},
+		},
+	}
+	_ = app.Run(os.Args)
 }
