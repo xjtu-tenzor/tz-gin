@@ -1,5 +1,20 @@
 [tz.gin.app]
 name = "tz-gin-cli"
 usage = "quickly build tenzor normalizing go-gin code"
-author = "tenzor/tiaozhan"
-version = "0.2.0"
+authors = ["tenzor/tiaozhan", "xinzhou", "libowen"]
+version = "0.3.0"
+
+[[tz.gin.app.authoers]]
+name = "tenzor/tiaozhan"
+email = "contact@tiaozhan.com"
+
+[[tz.gin.app.authoers]]
+name = "xinzhou"
+email = "xinzhou@tiaozhan.com"
+
+[[tz.gin.app.authoers]]
+name = "libowen"
+email = "libowen@tiaozhan.com"
+
+[tz.gin]
+remote_addr = "https://ghproxy.net/https://github.com/xjtu-tenzor/tz-gin-template/archive/refs/heads/master.zip"
