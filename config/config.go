@@ -14,58 +14,58 @@ type Config struct {
 }
 
 type App struct {
-	name    string        `mapstructure:"name"`
-	usage   string        `mapstructure:"usage"`
-	authors []*cli.Author `mapstructure:"authors"`
-	version string        `mapstructure:"version"`
+	Name    string        `mapstructure:"name"`
+	Usage   string        `mapstructure:"usage"`
+	Authors []*cli.Author `mapstructure:"authors"`
+	Version string        `mapstructure:"version"`
 }
 
 func New() *Config {
 	return &Config{
 		APP: &App{
-			name:  "tz-gin-cli",
-			usage: "quickly build tenzor normalizing go-gin code",
-			authors: []*cli.Author{
+			Name:  "tz-gin-cli",
+			Usage: "quickly build tenzor normalizing go-gin code",
+			Authors: []*cli.Author{
 				{
 					Name:  "tenzor/tiaozhan",
 					Email: "contact@tiaozhan.com",
 				},
 			},
-			version: "0.2.0",
+			Version: "0.2.0",
 		},
 	}
 }
 
-func (cfg *Config) Parse(key string, config string) *Config {
+func (cfg *Config) Parse(config string) *Config {
 	v := viper.New()
 	v.SetConfigType("toml")
 	v.ReadConfig(strings.NewReader(config))
 	tmp := &Config{}
-	if err := v.UnmarshalKey(key, tmp); err != nil {
+	if err := v.Unmarshal(tmp); err != nil {
 		panic("failed to init api config, error: " + err.Error())
 	}
 	return tmp
 }
 
-func (cfg *Config) Load(key string, app *cli.App, config string) {
-	tmp := cfg.Parse(key, config)
+func (cfg *Config) Load(app *cli.App, config string) {
+	tmp := cfg.Parse(config)
 	if tmp.APP != nil {
-		if tmp.APP.name != "" {
-			cfg.APP.name = tmp.APP.name
+		if tmp.APP.Name != "" {
+			cfg.APP.Name = tmp.APP.Name
 		}
-		if tmp.APP.authors != nil {
-			cfg.APP.authors = tmp.APP.authors
+		if tmp.APP.Authors != nil {
+			cfg.APP.Authors = tmp.APP.Authors
 		}
-		if tmp.APP.usage != "" {
-			cfg.APP.usage = tmp.APP.usage
+		if tmp.APP.Usage != "" {
+			cfg.APP.Usage = tmp.APP.Usage
 		}
-		if tmp.APP.version != "" {
-			cfg.APP.version = tmp.APP.version
+		if tmp.APP.Version != "" {
+			cfg.APP.Version = tmp.APP.Version
 		}
 	}
-	app.Name = cfg.APP.name
-	app.Version = cfg.APP.version
-	app.Usage = cfg.APP.usage
+	app.Name = cfg.APP.Name
+	app.Version = cfg.APP.Version
+	app.Usage = cfg.APP.Usage
 
-	app.Authors = cfg.APP.authors
+	app.Authors = cfg.APP.Authors
 }

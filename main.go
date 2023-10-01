@@ -11,9 +11,12 @@ import (
 //go:embed config.toml
 var configStirng string
 
+//go:embed banner.txt
+var banner string
+
 func main() {
 	app := app.InitApp(configStirng)
-	util.SuccessMsg("Welcome to use this cli. Developed by tenzor.\n")
+	util.SuccessMsg(banner)
 
 	app.Run(os.Args)
 

@@ -14,8 +14,8 @@ func InitApp(configString string) *cli.App {
 	cfg := config.New()
 
 	app := cli.NewApp()
-	cfg.Load("tz.gin", app, configString)
-	cfgStruct := cfg.Parse("tz.gin", configString)
+	cfg.Load(app, configString)
+	cfgStruct := cfg.Parse(configString)
 
 	app.EnableBashCompletion = true
 	app.Commands = []*cli.Command{
