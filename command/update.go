@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
+	"sort"
 
 	"github.com/urfave/cli/v2"
 	"github.com/xjtu-tenzor/tz-gin/util"
+	"golang.org/x/mod/semver"
 )
 
 func Update(c *cli.Context) error {
@@ -28,11 +30,11 @@ func Update(c *cli.Context) error {
 		if err != nil {
 			return cli.Exit(err.Error(), 1)
 		}
+		stop <- 1
 		util.SuccessMsg(fmt.Sprintf("\nSuccessfully update to %s\n", *ver))
 		return nil
 	}
 
-	stop <- 1
 	return err
 }
 
@@ -58,6 +60,10 @@ func getLatestVer() (*string, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	sort.Slice(releaseInfo, func(i, j int) bool {
+		return semver.Compare(releaseInfo[i].Name, releaseInfo[j].Name) == 1
+	})
 
 	return &releaseInfo[0].Name, nil
 }

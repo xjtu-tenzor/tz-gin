@@ -6,6 +6,7 @@ require (
 	github.com/logrusorgru/aurora/v3 v3.0.0
 	github.com/spf13/viper v1.12.0
 	github.com/urfave/cli/v2 v2.25.7
+	golang.org/x/mod v0.4.1
 )
 
 require (
