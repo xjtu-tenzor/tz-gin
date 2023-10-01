@@ -1,26 +1,60 @@
 package command
 
 import (
+	"encoding/json"
 	"fmt"
-	"log"
+	"net/http"
 	"os/exec"
 
 	"github.com/urfave/cli/v2"
+	"github.com/xjtu-tenzor/tz-gin/util"
 )
 
 func Update(c *cli.Context) error {
+	stop := make(chan int, 1)
+	go util.Loading(stop)
 	path, err := checkExists()
-	if len(path) != 0 && err != nil {
-		cmd := exec.Command(path, "install ", "github.com/xjtu-tenzor/tz-gin", "@latest")
-		out, err := cmd.CombinedOutput()
+	if err != nil {
+		return cli.Exit(err.Error(), 1)
+	}
+	ver, err := getLatestVer()
+	if err != nil {
+		return cli.Exit(err.Error(), 1)
+	}
+	if len(path) != 0 && err == nil {
+		cmd := exec.Command(path, "install ", fmt.Sprintf("github.com/xjtu-tenzor/tz-gin@%s", *ver))
+		err := cmd.Start()
 		if err != nil {
-			log.Fatalln("fail ", err)
-			return err
+			return cli.Exit(err.Error(), 1)
 		}
-		fmt.Printf("update out :\n%s\n", string(out))
+		util.SuccessMsg(fmt.Sprintf("\nSuccessfully update to %s\n", *ver))
 		return nil
 	}
+
+	stop <- 1
 	return err
+}
+
+func getLatestVer() (*string, error) {
+	apiUrl := "https://api.github.com/repos/xjtu-tenzor/tz-gin/releases/latest"
+	response, err := http.Get(apiUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	defer response.Body.Close()
+
+	var releaseInfo struct {
+		TagName string `json:"tag_name"`
+	}
+
+	err = json.NewDecoder(response.Body).Decode(&releaseInfo)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &releaseInfo.TagName, nil
 }
 
 func checkExists() (string, error) {

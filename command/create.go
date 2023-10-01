@@ -10,7 +10,6 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 
 	_ "embed"
 
@@ -172,39 +171,6 @@ func render(zipReader *zip.Reader) error {
 	return nil
 }
 
-func loading(stop chan int) {
-	animationFrames := []string{"|", "/", "-", "\\"}
-
-	// animationDuration := 3 * time.Second
-	startTime := time.Now()
-	output := os.Stdout
-
-	select {
-	case <-stop:
-		return
-
-	default:
-		for {
-			// 计算经过的时间
-			elapsedTime := time.Since(startTime)
-
-			// 计算当前帧索引
-			frameIndex := int((elapsedTime.Seconds() / 0.1)) % len(animationFrames)
-
-			// 清除上一帧并显示新的帧
-			util.SuccessMsg(fmt.Sprintf("\rLoading %s", animationFrames[frameIndex]))
-
-			// 刷新输出，使动画能够更新
-			output.Sync()
-
-			// 暂停一段时间以控制动画速度
-			time.Sleep(100 * time.Millisecond)
-
-			// 如果经过了指定的持续时间，退出循环
-		}
-	}
-}
-
 func Create(c *cli.Context) error {
 
 	if err := parseParams(c); err != nil {
@@ -216,7 +182,7 @@ func Create(c *cli.Context) error {
 	}
 
 	stop := make(chan int, 1)
-	go loading(stop)
+	go util.Loading(stop)
 
 	downloadResponse, err := getDownlowdResponse(c.String("remote"))
 
