@@ -2,6 +2,7 @@ package command
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os/exec"
@@ -36,7 +37,7 @@ func Update(c *cli.Context) error {
 }
 
 func getLatestVer() (*string, error) {
-	apiUrl := "https://api.github.com/repos/xjtu-tenzor/tz-gin/releases/latest"
+	apiUrl := "https://api.github.com/repos/xjtu-tenzor/tz-gin/tags"
 	response, err := http.Get(apiUrl)
 	if err != nil {
 		return nil, err
@@ -44,8 +45,12 @@ func getLatestVer() (*string, error) {
 
 	defer response.Body.Close()
 
-	var releaseInfo struct {
-		TagName string `json:"tag_name"`
+	if response.StatusCode != http.StatusOK {
+		return nil, errors.New("failed to fetch tags")
+	}
+
+	var releaseInfo []struct {
+		Name string `json:"name"`
 	}
 
 	err = json.NewDecoder(response.Body).Decode(&releaseInfo)
@@ -54,7 +59,7 @@ func getLatestVer() (*string, error) {
 		return nil, err
 	}
 
-	return &releaseInfo.TagName, nil
+	return &releaseInfo[0].Name, nil
 }
 
 func checkExists() (string, error) {
