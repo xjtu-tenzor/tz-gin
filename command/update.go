@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"os"
 	"os/exec"
 	"sort"
 
@@ -29,11 +27,11 @@ func Update(c *cli.Context) error {
 	if len(path) != 0 && err == nil {
 		cmd := exec.Command(path, "install", fmt.Sprintf("github.com/xjtu-tenzor/tz-gin@%s", *ver))
 
-		stdout, err := cmd.StdoutPipe()
+		_, err := cmd.StdoutPipe()
 		if err != nil {
 			return cli.Exit(err.Error(), 1)
 		}
-		stderr, err := cmd.StderrPipe()
+		_, err = cmd.StderrPipe()
 		if err != nil {
 			return cli.Exit(err.Error(), 1)
 		}
@@ -42,9 +40,6 @@ func Update(c *cli.Context) error {
 		if err != nil {
 			return cli.Exit(err.Error(), 1)
 		}
-
-		go copyOutput(stdout, os.Stdout)
-		go copyOutput(stderr, os.Stderr)
 
 		err = cmd.Wait()
 		if err != nil {
@@ -57,13 +52,6 @@ func Update(c *cli.Context) error {
 	}
 
 	return err
-}
-
-func copyOutput(src io.Reader, dst io.Writer) {
-	_, err := io.Copy(dst, src)
-	if err != nil {
-		fmt.Println("Error copying output:", err)
-	}
 }
 
 func getLatestVer() (*string, error) {
