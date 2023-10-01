@@ -24,6 +24,10 @@ func Update(c *cli.Context) error {
 	if err != nil {
 		return cli.Exit(err.Error(), 1)
 	}
+
+	if *ver == "v"+c.App.Version {
+		return cli.Exit("\nAlready the newest version", 2)
+	}
 	if len(path) != 0 && err == nil {
 		cmd := exec.Command(path, "install", fmt.Sprintf("github.com/xjtu-tenzor/tz-gin@%s", *ver))
 

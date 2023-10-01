@@ -1,6 +1,8 @@
 package app
 
 import (
+	"os"
+
 	"github.com/xjtu-tenzor/tz-gin/command"
 	"github.com/xjtu-tenzor/tz-gin/config"
 	"github.com/xjtu-tenzor/tz-gin/util"
@@ -52,7 +54,16 @@ func InitApp(configString string) *cli.App {
 
 	app.ExitErrHandler = func(cCtx *cli.Context, err error) {
 		if err != nil {
-			util.ErrMsg(err.Error() + "\n")
+			if exitErr, ok := err.(cli.ExitCoder); ok {
+				switch exitErr.ExitCode() {
+				case 1:
+					util.ErrMsg(err.Error() + "\n")
+					os.Exit(1)
+				case 2:
+					util.WarnMsg(err.Error() + "\n") //健康的错误
+					os.Exit(0)
+				}
+			}
 		}
 	}
 
