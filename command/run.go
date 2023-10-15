@@ -57,6 +57,7 @@ func initConfig(root string) (*runner.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(*goVersion)
 
 	if semver.Compare(*goVersion, "1.20.0") == -1 {
 		if root != "." {
@@ -114,7 +115,7 @@ func getGoVersion() (*string, error) {
 func parseGoVersion(output string) string {
 	fields := strings.Fields(output)
 	if len(fields) >= 3 {
-		return fields[2]
+		return strings.TrimPrefix(fields[2], "go")
 	}
 	return ""
 }
