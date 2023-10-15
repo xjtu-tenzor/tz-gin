@@ -1,15 +1,19 @@
 package command
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
 	"runtime"
+	"strings"
 	"syscall"
 
 	"github.com/cosmtrek/air/runner"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/mod/semver"
 )
 
 func Run(ctx *cli.Context) error {
@@ -45,6 +49,31 @@ func Run(ctx *cli.Context) error {
 
 func initConfig(root string) (*runner.Config, error) {
 	cfg, err := runner.InitConfig("")
+	if err != nil {
+		return nil, err
+	}
+
+	goVersion, err := getGoVersion()
+	if err != nil {
+		return nil, err
+	}
+
+	if semver.Compare(*goVersion, "1.20.0") == -1 {
+		if root != "." {
+			return nil, errors.New("-d flag not support below go version 1.20, please upgrade your golang version")
+		}
+		if ok := checkWindows(); ok {
+			cfg.Build.IncludeFile = []string{".env", "README.md"}
+			cfg.Build.Cmd = fmt.Sprintf("go build -o ./tmp/main.exe")
+			cfg.Build.Bin = fmt.Sprintf(".\\tmp\\main.exe")
+		} else {
+			cfg.Build.IncludeFile = []string{".env", "README.md"}
+			cfg.Build.Cmd = fmt.Sprintf("go build -o ./tmp/main")
+			cfg.Build.Bin = fmt.Sprintf("./tmp/main")
+		}
+		return cfg, nil
+	}
+
 	cfg.Root = root
 	if ok := checkWindows(); ok {
 		cfg.Build.IncludeFile = []string{".env", "README.md"}
@@ -56,9 +85,6 @@ func initConfig(root string) (*runner.Config, error) {
 		cfg.Build.Bin = fmt.Sprintf("%s/tmp/main", root)
 	}
 
-	if err != nil {
-		return nil, err
-	}
 	return cfg, nil
 }
 
@@ -69,4 +95,26 @@ func checkWindows() bool {
 	default:
 		return false
 	}
+}
+
+func getGoVersion() (*string, error) {
+	cmd := exec.Command("go", "version")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	goVersion := parseGoVersion(string(output))
+	if goVersion == "" {
+		return &goVersion, errors.New("go version parse error")
+	}
+	return &goVersion, nil
+}
+
+func parseGoVersion(output string) string {
+	fields := strings.Fields(output)
+	if len(fields) >= 3 {
+		return fields[2]
+	}
+	return ""
 }
