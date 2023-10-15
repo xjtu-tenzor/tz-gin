@@ -29,7 +29,7 @@ func InitApp(configString string) *cli.App {
 				&cli.StringFlag{
 					Name:    "directory",
 					Aliases: []string{"d"},
-					Usage:   "the direcotory you want to generate",
+					Usage:   "the directory you want to generate",
 				},
 				&cli.StringFlag{
 					Name:    "remote",
@@ -38,8 +38,10 @@ func InitApp(configString string) *cli.App {
 				},
 			},
 			Action: func(ctx *cli.Context) error {
-				if err := ctx.Set("remote", cfgStruct.RemoteAddr); err != nil {
-					return err
+				if ctx.String("remote") == "" {
+					if err := ctx.Set("remote", cfgStruct.RemoteAddr); err != nil {
+						return err
+					}
 				}
 				return command.Create(ctx)
 			},
@@ -49,6 +51,26 @@ func InitApp(configString string) *cli.App {
 			Aliases: []string{"u"},
 			Usage:   "update operations",
 			Action:  command.Update,
+		},
+		{
+			Name:    "run",
+			Aliases: []string{"r", "ru"},
+			Usage:   "run tz-gin project",
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:    "directory",
+					Aliases: []string{"d"},
+					Usage:   "specify directory directory",
+				},
+			},
+			Action: func(ctx *cli.Context) error {
+				if ctx.String("directory") == "" {
+					if err := ctx.Set("directory", "."); err != nil {
+						return err
+					}
+				}
+				return command.Run(ctx)
+			},
 		},
 	}
 
@@ -65,6 +87,11 @@ func InitApp(configString string) *cli.App {
 				}
 			}
 		}
+	}
+
+	app.CommandNotFound = func(cCtx *cli.Context, str string) {
+		util.ErrMsg("command not found: " + str + " can not be recognized as a valid command\n")
+		os.Exit(0)
 	}
 
 	return app
