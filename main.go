@@ -9,13 +9,13 @@ import (
 )
 
 //go:embed config.toml
-var configStirng string
+var configString string
 
 //go:embed banner.txt
 var banner string
 
 func main() {
-	app := app.InitApp(configStirng)
+	app := app.InitApp(configString)
 	util.SuccessMsg(banner)
 
 	app.Run(os.Args)

@@ -6,7 +6,7 @@ require (
 	github.com/logrusorgru/aurora/v3 v3.0.0
 	github.com/spf13/viper v1.12.0
 	github.com/urfave/cli/v2 v2.25.7
-	github.com/xjtu-tenzor/air v0.1.1
+	github.com/xjtu-tenzor/air v0.2.2
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4
 )
 

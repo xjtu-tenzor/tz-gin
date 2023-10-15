@@ -209,7 +209,7 @@ func Create(c *cli.Context) error {
 	}
 
 	stop <- 1
-	util.SuccessMsg(fmt.Sprintf("\nProject has been generate into folder: %s\nUse command as follow\n\tcd %s\n\tgo run .\n", *directoryString, *directoryString))
+	util.SuccessMsg(fmt.Sprintf("\nProject has been generate into folder: %s\nUse command as follow\n\tcd %s\n\ttz-gin run\n", *directoryString, *directoryString))
 
 	return nil
 }

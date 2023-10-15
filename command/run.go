@@ -65,7 +65,6 @@ func initConfig(root string) (*runner.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(middleVersion)
 	if middleVersion < 20 {
 		if root != "." {
 			return nil, errors.New("-d flag not support below go version 1.20, please upgrade your golang version")
