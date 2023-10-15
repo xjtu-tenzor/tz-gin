@@ -12,8 +12,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/cosmtrek/air/runner"
 	"github.com/urfave/cli/v2"
+	"github.com/xjtu-tenzor/air/runner"
 )
 
 func Run(ctx *cli.Context) error {
@@ -61,10 +61,11 @@ func initConfig(root string) (*runner.Config, error) {
 	if len(parts) < 3 {
 		return nil, errors.New("string split error")
 	}
-	middleVersion, err := strconv.Atoi(parts[2])
+	middleVersion, err := strconv.Atoi(parts[1])
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(middleVersion)
 	if middleVersion < 20 {
 		if root != "." {
 			return nil, errors.New("-d flag not support below go version 1.20, please upgrade your golang version")

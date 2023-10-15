@@ -3,10 +3,10 @@ module github.com/xjtu-tenzor/tz-gin
 go 1.18
 
 require (
-	github.com/cosmtrek/air v1.46.0
 	github.com/logrusorgru/aurora/v3 v3.0.0
 	github.com/spf13/viper v1.12.0
 	github.com/urfave/cli/v2 v2.25.7
+	github.com/xjtu-tenzor/air v0.1.1
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4
 )
 
