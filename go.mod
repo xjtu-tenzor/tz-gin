@@ -1,10 +1,9 @@
 module github.com/xjtu-tenzor/tz-gin
 
-go 1.21
-
-toolchain go1.21.0
+go 1.18
 
 require (
+	github.com/fsnotify/fsnotify v1.6.0
 	github.com/logrusorgru/aurora/v3 v3.0.0
 	github.com/spf13/viper v1.12.0
 	github.com/urfave/cli/v2 v2.25.7
@@ -14,7 +13,6 @@ require (
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/frankban/quicktest v1.14.4 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
