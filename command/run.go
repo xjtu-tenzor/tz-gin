@@ -213,7 +213,9 @@ func execRoutine(ctx context.Context, wg *sync.WaitGroup, execTrigger chan struc
 }
 
 func clean() error {
-	return os.RemoveAll(path.Join(directory, "tmp"))
+	err := os.RemoveAll(path.Join(directory, "tmp"))
+	util.ErrMsg(err.Error())
+	return err
 }
 
 func checkWindows() bool {
