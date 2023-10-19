@@ -2,8 +2,8 @@ remote_addr = "https://ghproxy.net/https://github.com/xjtu-tenzor/tz-gin-templat
 
 [app]
 name = "tz-gin-cli"
-usage = "quickly build tenzor normalizing go-gin code"
-version = "0.5.6"
+usage = "quickly build tenzor normalizing tz-gin code"
+version = "0.5.7"
 
 [[app.authors]]
 name = "tenzor/tiaozhan"

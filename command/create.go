@@ -27,35 +27,24 @@ func prepareDirectory() error {
 		if os.IsNotExist(err) {
 			err := os.MkdirAll(*directoryString, 0755)
 			if err != nil {
-				// util.ErrMsg("Create directory failed")
-				// os.Exit(1)
 				return cli.Exit("failed to create directory", 1)
 			}
 			info, err = os.Stat(*directoryString)
 			if err != nil {
-				// cli.HandleExitCoder(errors.New("123"))
-				// util.ErrMsg(err.Error())
-				// os.Exit(1)
 				return cli.Exit(err.Error(), 1)
 			}
 		} else {
-			// util.ErrMsg(err.Error())
-			// os.Exit(1)
 			return cli.Exit(err.Error(), 1)
 		}
 	}
 
 	if !info.IsDir() {
 		return cli.Exit("the path you select is folder", 1)
-		// util.ErrMsg("The path you select is not a folder")
-		// os.Exit(1)
 	}
 
 	file, err := os.Open(*directoryString)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			// util.ErrMsg(err.Error())
-			// os.Exit(1)
 			return cli.Exit(err.Error(), 1)
 		}
 	}
@@ -63,8 +52,6 @@ func prepareDirectory() error {
 
 	names, err := file.Readdirnames(-1)
 	if err != nil {
-		// util.ErrMsg(err.Error())
-		// os.Exit(1)
 		return cli.Exit(err.Error(), 1)
 	}
 
@@ -209,7 +196,7 @@ func Create(c *cli.Context) error {
 	}
 
 	stop <- 1
-	util.SuccessMsg(fmt.Sprintf("\nProject has been generate into folder: %s\nUse command as follow\n\tcd %s\n\tgo run .\n", *directoryString, *directoryString))
+	util.SuccessMsg(fmt.Sprintf("\nProject has been generate into folder: %s\nUse command as follow\n\tcd %s\n\ttz-gin run\n", *directoryString, *directoryString))
 
 	return nil
 }
