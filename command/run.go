@@ -54,6 +54,8 @@ func Run(ctx *cli.Context) error {
 	execTrigger := make(chan struct{})
 	chanErr := make(chan error)
 
+	defer clean()
+
 	cancelCtx, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
 	defer wg.Wait()
@@ -208,6 +210,10 @@ func execRoutine(ctx context.Context, wg *sync.WaitGroup, execTrigger chan struc
 			util.SuccessMsg("[runner] running ...\n")
 		}
 	}
+}
+
+func clean() error {
+	return os.RemoveAll(path.Join(directory, "tmp"))
 }
 
 func checkWindows() bool {
