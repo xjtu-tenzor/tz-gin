@@ -166,23 +166,25 @@ func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan str
 }
 
 func execRoutine(ctx context.Context, wg *sync.WaitGroup, execTrigger chan struct{}, chanErr chan error) {
-	var process *os.Process
+	var prevCmd *exec.Cmd
 	defer wg.Done()
 	for {
 		select {
 		case <-ctx.Done():
-			if process != nil {
+			if prevCmd != nil {
 				util.WarnMsg("[runner] killing ...\n")
-				process.Kill()
+				prevCmd.Process.Kill()
+				prevCmd.Wait()
 			}
 			return
 		case <-execTrigger:
-			if process != nil {
+			if prevCmd != nil {
 				util.WarnMsg("[runner] killing ...\n")
-				if err := process.Kill(); err != nil {
+				if err := prevCmd.Process.Kill(); err != nil {
 					chanErr <- err
 					return
 				}
+				prevCmd.Wait()
 			}
 
 			var cmd *exec.Cmd
@@ -206,7 +208,7 @@ func execRoutine(ctx context.Context, wg *sync.WaitGroup, execTrigger chan struc
 				chanErr <- err
 				return
 			}
-			process = cmd.Process
+			prevCmd = cmd
 			util.SuccessMsg("[runner] running ...\n")
 		}
 	}
@@ -214,7 +216,9 @@ func execRoutine(ctx context.Context, wg *sync.WaitGroup, execTrigger chan struc
 
 func clean() error {
 	err := os.RemoveAll(path.Join(directory, "tmp"))
-	util.ErrMsg(err.Error())
+	if err != nil {
+		util.ErrMsg("[clean]: " + err.Error())
+	}
 	return err
 }
 
