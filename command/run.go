@@ -50,8 +50,8 @@ func Run(ctx *cli.Context) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
-	buildTrigger := make(chan struct{}, 1)
-	execTrigger := make(chan struct{}, 1)
+	buildTrigger := make(chan struct{})
+	execTrigger := make(chan struct{})
 	chanErr := make(chan error)
 
 	cancelCtx, cancel := context.WithCancel(context.Background())
@@ -78,10 +78,10 @@ func Run(ctx *cli.Context) error {
 		}
 	}
 
-	wg.Add(3)
 	go watcherRoutine(cancelCtx, &wg, watcher, buildTrigger, chanErr)
 	go buildRoutine(cancelCtx, &wg, buildTrigger, execTrigger, chanErr)
 	go execRoutine(cancelCtx, &wg, execTrigger, chanErr)
+	wg.Add(3)
 
 	buildTrigger <- struct{}{}
 
@@ -95,6 +95,7 @@ func Run(ctx *cli.Context) error {
 
 func watcherRoutine(ctx context.Context, wg *sync.WaitGroup, watcher *fsnotify.Watcher, buildTrigger chan struct{}, chanErr chan error) {
 	fileSha := map[string][]byte{}
+	defer wg.Done()
 	for {
 		select {
 		case event := <-watcher.Events:
@@ -117,13 +118,13 @@ func watcherRoutine(ctx context.Context, wg *sync.WaitGroup, watcher *fsnotify.W
 				util.ErrMsg("[watcher] error: " + err.Error() + "\n")
 			}
 		case <-ctx.Done():
-			wg.Done()
 			return
 		}
 	}
 }
 
 func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan struct{}, execTrigger chan struct{}, chanErr chan error) {
+	defer wg.Done()
 	for {
 		select {
 		case <-buildTrigger:
@@ -132,13 +133,13 @@ func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan str
 			var cmd *exec.Cmd
 			if !windows {
 				if support {
-					cmd = exec.Command("go", "build", "-C", directory, "-o", path.Join(directory, "tmp/main"), ".")
+					cmd = exec.Command("go", "build", "-C", directory, "-o", "tmp/main", ".")
 				} else {
 					cmd = exec.Command("go", "build", "-o", "tmp/main", ".")
 				}
 			} else {
 				if support {
-					cmd = exec.Command("go", "build", "-C", directory, "-o", path.Join(directory, "tmp\\main.exe"), ".")
+					cmd = exec.Command("go", "build", "-C", directory, "-o", "tmp\\main.exe", ".")
 				} else {
 					cmd = exec.Command("go", "build", "-o", "tmp\\main.exe", ".")
 				}
@@ -149,14 +150,13 @@ func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan str
 
 			err := cmd.Run()
 			if err != nil {
-				util.ErrMsg(err.Error())
-				chanErr <- err
+				util.ErrMsg("[builder]: build failed: " + err.Error() + "\n")
+				continue
 			}
 
 			util.SuccessMsg("[builder] build finished\n")
 			execTrigger <- struct{}{}
 		case <-ctx.Done():
-			wg.Done()
 			return
 		}
 
@@ -165,6 +165,7 @@ func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan str
 
 func execRoutine(ctx context.Context, wg *sync.WaitGroup, execTrigger chan struct{}, chanErr chan error) {
 	var process *os.Process
+	defer wg.Done()
 	for {
 		select {
 		case <-ctx.Done():
@@ -172,7 +173,6 @@ func execRoutine(ctx context.Context, wg *sync.WaitGroup, execTrigger chan struc
 				util.WarnMsg("[runner] killing ...\n")
 				process.Kill()
 			}
-			wg.Done()
 			return
 		case <-execTrigger:
 			if process != nil {
