@@ -101,7 +101,7 @@ func watcherRoutine(ctx context.Context, wg *sync.WaitGroup, watcher *fsnotify.W
 	for {
 		select {
 		case event := <-watcher.Events:
-			if strings.HasPrefix(event.Name, "tmp") {
+			if strings.HasPrefix(event.Name, "tmp") || strings.HasPrefix(event.Name, ".git") {
 				continue
 			}
 			if event.Op.Has(fsnotify.Chmod) || event.Op.Has(fsnotify.Create) || event.Op.Has(fsnotify.Remove) || event.Op == 0 {
