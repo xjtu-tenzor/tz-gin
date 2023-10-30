@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/urfave/cli/v2"
@@ -51,7 +52,6 @@ func Run(ctx *cli.Context) error {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
 	buildTrigger := make(chan struct{})
-	execTrigger := make(chan struct{})
 	chanErr := make(chan error)
 
 	defer clean()
@@ -80,10 +80,9 @@ func Run(ctx *cli.Context) error {
 		}
 	}
 
+	wg.Add(2)
 	go watcherRoutine(cancelCtx, &wg, watcher, buildTrigger, chanErr)
-	go buildRoutine(cancelCtx, &wg, buildTrigger, execTrigger, chanErr)
-	go execRoutine(cancelCtx, &wg, execTrigger, chanErr)
-	wg.Add(3)
+	go buildRoutine(cancelCtx, &wg, buildTrigger, chanErr)
 
 	buildTrigger <- struct{}{}
 
@@ -108,6 +107,7 @@ func watcherRoutine(ctx context.Context, wg *sync.WaitGroup, watcher *fsnotify.W
 				continue
 			}
 			util.SuccessMsg("[watcher] event: " + event.String() + "\n")
+			time.Sleep(100 * time.Millisecond)
 			sha1hash, _ := getFileSha1(event.Name)
 			if fileSha[event.Name] != nil && subtle.ConstantTimeCompare(fileSha[event.Name][:], sha1hash[:]) == 1 {
 				util.WarnMsg("[watcher] file not change: " + event.Name + "\n")
@@ -125,8 +125,9 @@ func watcherRoutine(ctx context.Context, wg *sync.WaitGroup, watcher *fsnotify.W
 	}
 }
 
-func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan struct{}, execTrigger chan struct{}, chanErr chan error) {
+func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan struct{}, chanErr chan error) {
 	defer wg.Done()
+	var execCmd *exec.Cmd
 	for {
 		select {
 		case <-buildTrigger:
@@ -157,37 +158,18 @@ func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan str
 			}
 
 			util.SuccessMsg("[builder] build finished\n")
-			execTrigger <- struct{}{}
-		case <-ctx.Done():
-			return
-		}
 
-	}
-}
-
-func execRoutine(ctx context.Context, wg *sync.WaitGroup, execTrigger chan struct{}, chanErr chan error) {
-	var prevCmd *exec.Cmd
-	defer wg.Done()
-	for {
-		select {
-		case <-ctx.Done():
-			if prevCmd != nil {
+			if execCmd != nil && execCmd.ProcessState != nil {
 				util.WarnMsg("[runner] killing ...\n")
-				prevCmd.Process.Kill()
-				prevCmd.Wait()
-			}
-			return
-		case <-execTrigger:
-			if prevCmd != nil {
-				util.WarnMsg("[runner] killing ...\n")
-				if err := prevCmd.Process.Kill(); err != nil {
+				err := execCmd.Process.Kill()
+				if err != nil {
 					chanErr <- err
 					return
 				}
-				prevCmd.Wait()
+				execCmd.Wait()
 			}
 
-			var cmd *exec.Cmd
+			// exec
 			if !windows {
 				if support {
 					cmd = exec.Command(path.Join(directory, "tmp/main"))
@@ -208,9 +190,18 @@ func execRoutine(ctx context.Context, wg *sync.WaitGroup, execTrigger chan struc
 				chanErr <- err
 				return
 			}
-			prevCmd = cmd
+			execCmd = cmd
 			util.SuccessMsg("[runner] running ...\n")
+
+		case <-ctx.Done():
+			if execCmd != nil && execCmd.ProcessState != nil {
+				util.WarnMsg("[runner] killing ...\n")
+				execCmd.Process.Kill()
+				execCmd.Wait()
+			}
+			return
 		}
+
 	}
 }
 
@@ -236,6 +227,7 @@ func getFileSha1(file string) ([]byte, error) {
 
 	sha1hash := sha1.New()
 	_, err = io.Copy(sha1hash, fp)
+
 	if err != nil {
 		return nil, err
 	}
