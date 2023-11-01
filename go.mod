@@ -3,6 +3,7 @@ module github.com/xjtu-tenzor/tz-gin
 go 1.18
 
 require (
+	github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/logrusorgru/aurora/v3 v3.0.0
 	github.com/spf13/viper v1.12.0

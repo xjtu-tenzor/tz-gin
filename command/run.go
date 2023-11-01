@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/eiannone/keyboard"
 	"github.com/fsnotify/fsnotify"
 	"github.com/urfave/cli/v2"
 	"github.com/xjtu-tenzor/tz-gin/util"
@@ -37,6 +38,7 @@ var support bool
 var directory string
 
 func Run(ctx *cli.Context) error {
+	util.SuccessMsg("[info] press ctrl-c or c to exit, r to force rebuild\n")
 	windows = checkWindows()
 	var err error
 	support, err = cSupport()
@@ -61,27 +63,9 @@ func Run(ctx *cli.Context) error {
 	defer wg.Wait()
 	defer cancel()
 
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		return cli.Exit(err, 1)
-	}
-
-	defer watcher.Close()
-
-	err = watcher.Add(directory)
-	if err != nil {
-		return cli.Exit(err, 1)
-	}
-
-	for _, file := range fileToWatch {
-		err = watcher.Add(path.Join(directory, file))
-		if err != nil {
-			return cli.Exit(err, 1)
-		}
-	}
-
-	wg.Add(2)
-	go watcherRoutine(cancelCtx, &wg, watcher, buildTrigger, chanErr)
+	wg.Add(3)
+	go watcherRoutine(cancelCtx, &wg, buildTrigger, chanErr)
+	go keyRoutine(cancelCtx, &wg, buildTrigger, sigs, chanErr)
 	go buildRoutine(cancelCtx, &wg, buildTrigger, chanErr)
 
 	buildTrigger <- struct{}{}
@@ -94,7 +78,28 @@ func Run(ctx *cli.Context) error {
 	}
 }
 
-func watcherRoutine(ctx context.Context, wg *sync.WaitGroup, watcher *fsnotify.Watcher, buildTrigger chan struct{}, chanErr chan error) {
+func watcherRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan struct{}, chanErr chan error) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		chanErr <- err
+		return
+	}
+
+	defer watcher.Close()
+
+	err = watcher.Add(directory)
+	if err != nil {
+		chanErr <- err
+		return
+	}
+
+	for _, file := range fileToWatch {
+		err = watcher.Add(path.Join(directory, file))
+		if err != nil {
+			chanErr <- err
+			return
+		}
+	}
 	fileSha := map[string][]byte{}
 	defer wg.Done()
 	for {
@@ -121,6 +126,47 @@ func watcherRoutine(ctx context.Context, wg *sync.WaitGroup, watcher *fsnotify.W
 			}
 		case <-ctx.Done():
 			return
+		}
+	}
+}
+
+func keyRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan struct{}, sigs chan os.Signal, chanErr chan error) {
+	err := keyboard.Open()
+	defer keyboard.Close()
+	if err != nil {
+		chanErr <- err
+		return
+	}
+	if err != nil {
+		chanErr <- err
+		return
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			wg.Done()
+			return
+		default:
+			run, key, err := keyboard.GetKey()
+			if err != nil {
+				util.WarnMsg("[key] error: " + err.Error() + "\n")
+				continue
+			}
+
+			if key == keyboard.KeyCtrlC {
+				sigs <- syscall.SIGINT
+				wg.Done()
+				return
+			}
+
+			if run == 'r' {
+				buildTrigger <- struct{}{}
+			}
+			if run == 'c' {
+				sigs <- syscall.SIGINT
+				wg.Done()
+				return
+			}
 		}
 	}
 }
