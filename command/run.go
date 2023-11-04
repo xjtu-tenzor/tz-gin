@@ -37,7 +37,6 @@ var support bool
 var directory string
 
 func Run(ctx *cli.Context) error {
-	util.SuccessMsg("[info] press ctrl-c or c to exit, r to force rebuild\n")
 	windows = checkWindows()
 	var err error
 	support, err = cSupport()
