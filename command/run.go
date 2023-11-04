@@ -16,7 +16,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/eiannone/keyboard"
 	"github.com/fsnotify/fsnotify"
 	"github.com/urfave/cli/v2"
 	"github.com/xjtu-tenzor/tz-gin/util"
@@ -63,9 +62,8 @@ func Run(ctx *cli.Context) error {
 	defer wg.Wait()
 	defer cancel()
 
-	wg.Add(3)
+	wg.Add(2)
 	go watcherRoutine(cancelCtx, &wg, buildTrigger, chanErr)
-	go keyRoutine(cancelCtx, &wg, buildTrigger, sigs, chanErr)
 	go buildRoutine(cancelCtx, &wg, buildTrigger, chanErr)
 
 	buildTrigger <- struct{}{}
@@ -79,6 +77,7 @@ func Run(ctx *cli.Context) error {
 }
 
 func watcherRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan struct{}, chanErr chan error) {
+	defer wg.Done()
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		chanErr <- err
@@ -101,7 +100,6 @@ func watcherRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan s
 		}
 	}
 	fileSha := map[string][]byte{}
-	defer wg.Done()
 	for {
 		select {
 		case event := <-watcher.Events:
@@ -126,47 +124,6 @@ func watcherRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan s
 			}
 		case <-ctx.Done():
 			return
-		}
-	}
-}
-
-func keyRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan struct{}, sigs chan os.Signal, chanErr chan error) {
-	err := keyboard.Open()
-	defer keyboard.Close()
-	if err != nil {
-		chanErr <- err
-		return
-	}
-	if err != nil {
-		chanErr <- err
-		return
-	}
-	for {
-		select {
-		case <-ctx.Done():
-			wg.Done()
-			return
-		default:
-			run, key, err := keyboard.GetKey()
-			if err != nil {
-				util.WarnMsg("[key] error: " + err.Error() + "\n")
-				continue
-			}
-
-			if key == keyboard.KeyCtrlC {
-				sigs <- syscall.SIGINT
-				wg.Done()
-				return
-			}
-
-			if run == 'r' {
-				buildTrigger <- struct{}{}
-			}
-			if run == 'c' {
-				sigs <- syscall.SIGINT
-				wg.Done()
-				return
-			}
 		}
 	}
 }
@@ -205,7 +162,8 @@ func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan str
 
 			util.SuccessMsg("[builder] build finished\n")
 
-			if execCmd != nil && execCmd.ProcessState != nil {
+			if execCmd != nil {
+				// execCmd.Process
 				util.WarnMsg("[runner] killing ...\n")
 				err := execCmd.Process.Kill()
 				if err != nil {
@@ -240,10 +198,10 @@ func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan str
 			util.SuccessMsg("[runner] running ...\n")
 
 		case <-ctx.Done():
-			if execCmd != nil && execCmd.ProcessState != nil {
+			if execCmd != nil {
 				util.WarnMsg("[runner] killing ...\n")
 				execCmd.Process.Kill()
-				execCmd.Wait()
+				execCmd.Process.Wait()
 			}
 			return
 		}
