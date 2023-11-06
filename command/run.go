@@ -161,13 +161,15 @@ func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan str
 
 			util.SuccessMsg("[builder] build finished\n")
 
-			if execCmd != nil && execCmd.ProcessState != nil && !execCmd.ProcessState.Exited() {
-				// execCmd.Process
-				util.WarnMsg("[runner] killing ...\n")
-				err := execCmd.Process.Kill()
-				if err != nil {
-					chanErr <- err
-					return
+			if execCmd != nil {
+				if execCmd.ProcessState != nil && !execCmd.ProcessState.Exited() {
+
+					util.WarnMsg("[runner] killing ...\n")
+					err := execCmd.Process.Kill()
+					if err != nil {
+						chanErr <- err
+						return
+					}
 				}
 				execCmd.Wait()
 			}
@@ -197,9 +199,11 @@ func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan str
 			util.SuccessMsg("[runner] running ...\n")
 
 		case <-ctx.Done():
-			if execCmd != nil && execCmd.ProcessState != nil && !execCmd.ProcessState.Exited() {
-				util.WarnMsg("[runner] killing ...\n")
-				execCmd.Process.Kill()
+			if execCmd != nil {
+				if execCmd.ProcessState != nil && !execCmd.ProcessState.Exited() {
+					util.WarnMsg("[runner] killing ...\n")
+					execCmd.Process.Kill()
+				}
 				execCmd.Process.Wait()
 			}
 			return
