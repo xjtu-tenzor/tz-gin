@@ -161,7 +161,7 @@ func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan str
 
 			util.SuccessMsg("[builder] build finished\n")
 
-			if execCmd != nil && execCmd.ProcessState != nil || !execCmd.ProcessState.Exited() {
+			if execCmd != nil && execCmd.ProcessState != nil && !execCmd.ProcessState.Exited() {
 				// execCmd.Process
 				util.WarnMsg("[runner] killing ...\n")
 				err := execCmd.Process.Kill()
