@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"crypto/subtle"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -130,9 +131,15 @@ func watcherRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan s
 func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan struct{}, chanErr chan error) {
 	defer wg.Done()
 	var execCmd *exec.Cmd
+	killRunner := make(chan bool)
+	isRunning := false
 	for {
 		select {
 		case <-buildTrigger:
+			if isRunning {
+				killRunner <- true
+			}
+			isRunning = true
 			util.SuccessMsg("[builder] building ...\n")
 
 			var cmd *exec.Cmd
@@ -156,23 +163,22 @@ func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan str
 			err := cmd.Run()
 			if err != nil {
 				util.ErrMsg("[builder]: build failed: " + err.Error() + "\n")
+				isRunning = false
 				continue
 			}
 
 			util.SuccessMsg("[builder] build finished\n")
-
-			if execCmd != nil {
-				if execCmd.ProcessState != nil && !execCmd.ProcessState.Exited() {
-
-					util.WarnMsg("[runner] killing ...\n")
-					err := execCmd.Process.Kill()
-					if err != nil {
-						chanErr <- err
-						return
-					}
-				}
-				execCmd.Wait()
-			}
+			// if execCmd != nil {
+			// 	if execCmd.ProcessState != nil && !execCmd.ProcessState.Exited() {
+			// 		util.WarnMsg("[runner] killing ...\n")
+			// 		err := execCmd.Process.Kill()
+			// 		if err != nil {
+			// 			chanErr <- err
+			// 			return
+			// 		}
+			// 	}
+			// 	execCmd.Wait()
+			// }
 
 			// exec
 			if !windows {
@@ -196,19 +202,24 @@ func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan str
 				return
 			}
 			execCmd = cmd
+			go func() {
+				<-killRunner
+				pid := execCmd.Process.Pid
+				util.WarnMsg(fmt.Sprintf("[runner] killing PID %d\n", pid))
+				execCmd.Process.Kill()
+			}()
 			util.SuccessMsg("[runner] running ...\n")
-
 		case <-ctx.Done():
 			if execCmd != nil {
 				if execCmd.ProcessState != nil && !execCmd.ProcessState.Exited() {
-					util.WarnMsg("[runner] killing ...\n")
+					pid := execCmd.Process.Pid
+					util.WarnMsg(fmt.Sprintf("[runner] killing PID %d\n", pid))
 					execCmd.Process.Kill()
 				}
 				execCmd.Process.Wait()
 			}
 			return
 		}
-
 	}
 }
 
