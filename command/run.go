@@ -10,7 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -31,6 +31,12 @@ var fileToWatch []string = []string{
 	"router",
 	"service",
 	"service/validator",
+}
+var fileToIgnore []string = []string{
+	"log",
+	".git",
+	"docs",
+	"tmp",
 }
 
 var windows bool
@@ -93,17 +99,19 @@ func watcherRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan s
 	}
 
 	for _, file := range fileToWatch {
-		err = watcher.Add(path.Join(directory, file))
+		err = watcher.Add(filepath.Join(directory, file))
 		if err != nil {
 			chanErr <- err
 			return
 		}
 	}
 	fileSha := map[string][]byte{}
+
 	for {
 		select {
 		case event := <-watcher.Events:
-			if strings.HasPrefix(event.Name, "tmp") || strings.HasPrefix(event.Name, ".git") {
+
+			if checkIgnore(event.Name) {
 				continue
 			}
 			if event.Op.Has(fsnotify.Chmod) || event.Op.Has(fsnotify.Create) || event.Op.Has(fsnotify.Remove) || event.Op == 0 {
@@ -141,7 +149,6 @@ func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan str
 			}
 			isRunning = true
 			util.SuccessMsg("[builder] building ...\n")
-
 			var cmd *exec.Cmd
 			if !windows {
 				if support {
@@ -168,28 +175,17 @@ func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan str
 			}
 
 			util.SuccessMsg("[builder] build finished\n")
-			// if execCmd != nil {
-			// 	if execCmd.ProcessState != nil && !execCmd.ProcessState.Exited() {
-			// 		util.WarnMsg("[runner] killing ...\n")
-			// 		err := execCmd.Process.Kill()
-			// 		if err != nil {
-			// 			chanErr <- err
-			// 			return
-			// 		}
-			// 	}
-			// 	execCmd.Wait()
-			// }
 
 			// exec
 			if !windows {
 				if support {
-					cmd = exec.Command(path.Join(directory, "tmp/main"))
+					cmd = exec.Command(filepath.Join(directory, "tmp/main"))
 				} else {
 					cmd = exec.Command("tmp/main")
 				}
 			} else {
 				if support {
-					cmd = exec.Command(path.Join(directory, "tmp\\main.exe"))
+					cmd = exec.Command(filepath.Join(directory, "tmp\\main.exe"))
 				} else {
 					cmd = exec.Command("tmp\\main.exe")
 				}
@@ -210,12 +206,8 @@ func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan str
 			}()
 			util.SuccessMsg("[runner] running ...\n")
 		case <-ctx.Done():
-			if execCmd != nil {
-				if execCmd.ProcessState != nil && !execCmd.ProcessState.Exited() {
-					pid := execCmd.Process.Pid
-					util.WarnMsg(fmt.Sprintf("[runner] killing PID %d\n", pid))
-					execCmd.Process.Kill()
-				}
+			if isRunning {
+				killRunner <- true
 				execCmd.Process.Wait()
 			}
 			return
@@ -224,7 +216,7 @@ func buildRoutine(ctx context.Context, wg *sync.WaitGroup, buildTrigger chan str
 }
 
 func clean() error {
-	err := os.RemoveAll(path.Join(directory, "tmp"))
+	err := os.RemoveAll(filepath.Join(directory, "tmp"))
 	if err != nil {
 		util.ErrMsg("[clean]: " + err.Error())
 	}
@@ -271,4 +263,13 @@ func cSupport() (bool, error) {
 	goVer = "v" + strings.Replace(strings.Split(goVer, " ")[2], "go", "", -1)
 
 	return semver.Compare(goVer, "v1.20.0") != -1, nil
+}
+
+func checkIgnore(path string) bool {
+	for _, file := range fileToIgnore {
+		if strings.HasPrefix(filepath.Clean(path), filepath.Join(directory, file)) {
+			return true
+		}
+	}
+	return false
 }
