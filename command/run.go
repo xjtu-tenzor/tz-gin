@@ -24,6 +24,7 @@ import (
 )
 
 var fileToWatch []string = []string{
+	"common",
 	"config",
 	"controller",
 	"middleware",
